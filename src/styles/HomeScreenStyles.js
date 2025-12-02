@@ -196,6 +196,10 @@ export const createHomeScreenStyles = (colors, isDarkMode) => {
     horizontalListContent: {
       paddingHorizontal: CARD_PEEK + CARD_GAP, // Center first card with peek on left
     },
+    carousel: {
+      width: SCREEN_WIDTH,
+      alignSelf: 'center',
+    },
 
     // ============ CAROUSEL CARD BASE ============
     carouselCard: {
@@ -216,8 +220,8 @@ export const createHomeScreenStyles = (colors, isDarkMode) => {
 
     // ============ PLACE CARD ============
     placeCard: {
-      width: PLACE_CARD_WIDTH,
-      marginHorizontal: CARD_GAP / 2,
+      width: SCREEN_WIDTH * 0.75,
+      marginRight: SIZES.md,
       backgroundColor: colors.cardBackground,
       borderRadius: SIZES.radiusLarge,
       overflow: 'hidden',
@@ -230,7 +234,7 @@ export const createHomeScreenStyles = (colors, isDarkMode) => {
     },
     cardIconBox: {
       width: '100%',
-      height: 200,
+      height: 180,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -273,8 +277,8 @@ export const createHomeScreenStyles = (colors, isDarkMode) => {
 
     // ============ RESTAURANT CARD ============
     restaurantCard: {
-      width: RESTAURANT_CARD_WIDTH,
-      marginHorizontal: CARD_GAP / 2,
+      width: SCREEN_WIDTH * 0.75,
+      marginRight: SIZES.md,
       backgroundColor: colors.cardBackground,
       borderRadius: SIZES.radiusLarge,
       overflow: 'hidden',
@@ -287,7 +291,7 @@ export const createHomeScreenStyles = (colors, isDarkMode) => {
     },
     restaurantIconBox: {
       width: '100%',
-      height: 180,
+      height: 160,
       alignItems: 'center',
       justifyContent: 'center',
     },
@@ -391,8 +395,8 @@ export const createHomeScreenStyles = (colors, isDarkMode) => {
 
     // ============ HOLY PLACE CARD ============
     holyPlaceCard: {
-      width: HOLY_PLACE_CARD_WIDTH,
-      marginHorizontal: CARD_GAP / 2,
+      width: SCREEN_WIDTH * 0.75,
+      marginRight: SIZES.md,
       backgroundColor: colors.cardBackground,
       borderRadius: SIZES.radiusLarge,
       overflow: 'hidden',
@@ -405,7 +409,7 @@ export const createHomeScreenStyles = (colors, isDarkMode) => {
     },
     holyPlaceIconBox: {
       width: '100%',
-      height: 220,
+      height: 180,
       alignItems: 'center',
       justifyContent: 'center',
     },

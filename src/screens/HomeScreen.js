@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,8 @@ import { useAppTheme } from '../hooks/useAppTheme';
 import { LocationService } from '../services/LocationService';
 import LocationSearchModal from '../components/LocationSearchModal';
 import { createHomeScreenStyles } from '../styles/HomeScreenStyles';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // ============ MOCK DATA ============
 // Static data matching API structure for seamless future integration
@@ -84,18 +86,26 @@ const HomeScreen = ({ navigation }) => {
   const [currentLocation, setCurrentLocation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [showSearchModal, setShowSearchModal] = useState(false);
-  const [activeNewsIndex, setActiveNewsIndex] = useState(0);
   
   // Scroll tracking for carousel indicators
   const [activePlaceIndex, setActivePlaceIndex] = useState(0);
   const [activeRestaurantIndex, setActiveRestaurantIndex] = useState(0);
   const [activeHolyPlaceIndex, setActiveHolyPlaceIndex] = useState(0);
 
-  // Card width calculation for scroll tracking
-  const CARD_WIDTH = Dimensions.get('window').width - 80 - 32 + 16;
+  // Refs for FlatLists to scroll to center on mount
+  const placesListRef = useRef(null);
+  const restaurantsListRef = useRef(null);
+  const holyPlacesListRef = useRef(null);
+
+  // Card dimensions for FlatList snap
+  const CARD_WIDTH = SCREEN_WIDTH * 0.75;
+  const SNAP_INTERVAL = CARD_WIDTH + SIZES.md;
 
   // Create dynamic styles based on current theme
   const styles = createHomeScreenStyles(colors, isDarkMode);
+
+  // Get middle index for centering highest rated
+  const getMiddleIndex = (length) => Math.floor(length / 2);
 
   // Helper to sort by rating (highest first) and center the best item
   const sortByRating = (data) => {
@@ -118,14 +128,34 @@ const HomeScreen = ({ navigation }) => {
   const services = MOCK_DATA.services;
   const news = MOCK_DATA.news;
 
-  // Get initial scroll offset to center the middle card
-  const getInitialScrollIndex = (dataLength) => {
-    return Math.floor(dataLength / 2);
-  };
-
   useEffect(() => {
     initializeLocation();
   }, []);
+
+  // Scroll to center (highest rated) after component mounts
+  useEffect(() => {
+    if (!isLoading) {
+      const scrollTimeout = setTimeout(() => {
+        const placesMiddle = getMiddleIndex(Math.min(placesToVisit.length, 7));
+        const restaurantsMiddle = getMiddleIndex(Math.min(restaurants.length, 7));
+        const holyMiddle = getMiddleIndex(Math.min(holyPlaces.length, 5));
+
+        if (placesListRef.current && placesToVisit.length > 0) {
+          placesListRef.current.scrollToOffset({ offset: placesMiddle * SNAP_INTERVAL, animated: false });
+          setActivePlaceIndex(placesMiddle);
+        }
+        if (restaurantsListRef.current && restaurants.length > 0) {
+          restaurantsListRef.current.scrollToOffset({ offset: restaurantsMiddle * SNAP_INTERVAL, animated: false });
+          setActiveRestaurantIndex(restaurantsMiddle);
+        }
+        if (holyPlacesListRef.current && holyPlaces.length > 0) {
+          holyPlacesListRef.current.scrollToOffset({ offset: holyMiddle * SNAP_INTERVAL, animated: false });
+          setActiveHolyPlaceIndex(holyMiddle);
+        }
+      }, 100);
+      return () => clearTimeout(scrollTimeout);
+    }
+  }, [isLoading]);
 
   const initializeLocation = async () => {
     setIsLoading(true);
@@ -181,23 +211,23 @@ const HomeScreen = ({ navigation }) => {
   // Scroll handlers for carousel indicators
   const handlePlaceScroll = (event) => {
     const offset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offset / CARD_WIDTH);
+    const index = Math.round(offset / SNAP_INTERVAL);
     setActivePlaceIndex(Math.max(0, Math.min(index, placesToVisit.length - 1)));
   };
 
   const handleRestaurantScroll = (event) => {
     const offset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offset / CARD_WIDTH);
+    const index = Math.round(offset / SNAP_INTERVAL);
     setActiveRestaurantIndex(Math.max(0, Math.min(index, restaurants.length - 1)));
   };
 
   const handleHolyPlaceScroll = (event) => {
     const offset = event.nativeEvent.contentOffset.x;
-    const index = Math.round(offset / CARD_WIDTH);
+    const index = Math.round(offset / SNAP_INTERVAL);
     setActiveHolyPlaceIndex(Math.max(0, Math.min(index, holyPlaces.length - 1)));
   };
 
-  // Render scroll indicators
+  // Render scroll indicators for carousels
   const renderScrollIndicators = (totalItems, activeIndex) => (
     <View style={styles.scrollIndicatorContainer}>
       {Array.from({ length: totalItems }).map((_, index) => (
@@ -327,14 +357,6 @@ const HomeScreen = ({ navigation }) => {
     </TouchableOpacity>
   );
 
-  // Handle news scroll pagination
-  const handleNewsScroll = (event) => {
-    const slideWidth = event.nativeEvent.layoutMeasurement.width;
-    const offset = event.nativeEvent.contentOffset.x;
-    const activeIndex = Math.round(offset / slideWidth);
-    setActiveNewsIndex(activeIndex);
-  };
-
   if (isLoading) {
     return (
       <SafeAreaView style={styles.container}>
@@ -423,24 +445,18 @@ const HomeScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             <FlatList
+              ref={placesListRef}
               data={placesToVisit.slice(0, 7)}
               renderItem={renderPlaceCard}
               keyExtractor={(item, index) => `place-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.horizontalList}
               contentContainerStyle={styles.horizontalListContent}
-              snapToInterval={CARD_WIDTH}
+              snapToInterval={SNAP_INTERVAL}
               snapToAlignment="start"
-              decelerationRate={0.9}
+              decelerationRate="fast"
               onScroll={handlePlaceScroll}
               scrollEventThrottle={16}
-              initialScrollIndex={getInitialScrollIndex(Math.min(placesToVisit.length, 7))}
-              getItemLayout={(data, index) => ({
-                length: CARD_WIDTH,
-                offset: CARD_WIDTH * index,
-                index,
-              })}
             />
             {renderScrollIndicators(Math.min(placesToVisit.length, 7), activePlaceIndex)}
           </View>
@@ -456,24 +472,18 @@ const HomeScreen = ({ navigation }) => {
               </TouchableOpacity>
             </View>
             <FlatList
+              ref={restaurantsListRef}
               data={restaurants.slice(0, 7)}
               renderItem={renderRestaurantCard}
               keyExtractor={(item, index) => `restaurant-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.horizontalList}
               contentContainerStyle={styles.horizontalListContent}
-              snapToInterval={CARD_WIDTH}
+              snapToInterval={SNAP_INTERVAL}
               snapToAlignment="start"
-              decelerationRate={0.9}
+              decelerationRate="fast"
               onScroll={handleRestaurantScroll}
               scrollEventThrottle={16}
-              initialScrollIndex={getInitialScrollIndex(Math.min(restaurants.length, 7))}
-              getItemLayout={(data, index) => ({
-                length: CARD_WIDTH,
-                offset: CARD_WIDTH * index,
-                index,
-              })}
             />
             {renderScrollIndicators(Math.min(restaurants.length, 7), activeRestaurantIndex)}
           </View>
@@ -498,24 +508,18 @@ const HomeScreen = ({ navigation }) => {
               <Text style={styles.sectionTitle}>Holy Places</Text>
             </View>
             <FlatList
+              ref={holyPlacesListRef}
               data={holyPlaces.slice(0, 5)}
               renderItem={renderHolyPlaceCard}
               keyExtractor={(item, index) => `holy-${index}`}
               horizontal
               showsHorizontalScrollIndicator={false}
-              style={styles.horizontalList}
               contentContainerStyle={styles.horizontalListContent}
-              snapToInterval={CARD_WIDTH}
+              snapToInterval={SNAP_INTERVAL}
               snapToAlignment="start"
-              decelerationRate={0.9}
+              decelerationRate="fast"
               onScroll={handleHolyPlaceScroll}
               scrollEventThrottle={16}
-              initialScrollIndex={getInitialScrollIndex(Math.min(holyPlaces.length, 5))}
-              getItemLayout={(data, index) => ({
-                length: CARD_WIDTH,
-                offset: CARD_WIDTH * index,
-                index,
-              })}
             />
             {renderScrollIndicators(Math.min(holyPlaces.length, 5), activeHolyPlaceIndex)}
           </View>
