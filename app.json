@@ -44,7 +44,8 @@
         {
           "locationAlwaysAndWhenInUsePermission": "Allow CurioCity to use your location to show you information about your current area and nearby attractions."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "extra": {
       "eas": {
