@@ -1,70 +1,72 @@
 // Dynamic theme colors
 export const LIGHT_THEME = {
   // Primary colors
-  primary: '#2596be',
-  primaryDark: '#1e7a9b',
-  primaryLight: '#4db3d1',
-  secondary: '#4ECDC4',
+  primary: 'hsl(12, 55%, 26%)',
+  primaryDark: 'hsl(12, 55%, 20%)',
+  primaryLight: 'hsl(12, 55%, 32%)',
+  secondary: 'hsl(190, 60%, 10%)',
   
   // Background colors
-  background: '#FFFFFF',
-  backgroundSecondary: '#F8F9FA',
-  backgroundAccent: '#F1F3F4',
-  lightBackground: '#FAFAFA',
+  background: 'hsl(12, 60%, 97%)',
+  backgroundSecondary: 'hsl(12, 60%, 92%)',
+  backgroundAccent: 'hsl(12, 60%, 95%)',
+  lightBackground: 'hsl(12, 60%, 100%)',
   
   // Text colors
-  textPrimary: '#1A1A1A',
-  textSecondary: '#6C757D',
-  textMuted: '#ADB5BD',
+  textPrimary: 'hsl(349, 60%, 6%)',
+  textSecondary: 'hsl(12, 55%, 26%)',
+  textMuted: 'hsl(11, 45%, 65%)',
   textWhite: '#FFFFFF',
     // Accent colors
-  accent: '#4ECDC4',
-  success: '#28A745',
-  warning: '#FFC107',
-  error: '#DC3545',
+  accent: 'hsl(11, 60%, 100%)',
+  success: 'hsl(161, 60%, 15%)',
+  warning: 'hsl(53, 60%, 14%)',
+  error: 'hsl(7, 35%, 41%)',
+  info: 'hsl(217, 40%, 44%)',
   
   // Gradient colors
-  gradientStart: '#2596be',
-  gradientEnd: '#4ECDC4',
+  gradientStart: 'hsl(12, 55%, 26%)',
+  gradientEnd: 'hsl(190, 60%, 10%)',
     // Card and border colors
-  cardBackground: '#FFFFFF',
-  borderLight: '#E0E4E7',
-  border: '#D1D5DA',
+  cardBackground: 'hsl(12, 60%, 100%)',
+  borderLight: 'hsl(11, 45%, 65%)',
+  border: 'hsl(11, 35%, 52%)',
   shadow: 'rgba(0, 0, 0, 0.08)',
 };
 
 export const DARK_THEME = {
   // Primary colors (keep vibrant for good contrast)
-  primary: '#2596be',
-  primaryDark: '#1e7a9b',
-  primaryLight: '#4db3d1',
-  secondary: '#4ECDC4',
+  primary: 'hsl(11, 55%, 72%)',
+  primaryDark: 'hsl(11, 55%, 62%)',
+  primaryLight: 'hsl(11, 55%, 82%)',
+  secondary: 'hsl(187, 55%, 38%)',
   
   // Background colors
-  background: '#121212',
-  backgroundSecondary: '#1E1E1E',
-  backgroundAccent: '#2A2A2A',
-  lightBackground: '#1A1A1A',
+  background: 'hsl(1, 55%, 6%)',
+  backgroundSecondary: 'hsl(355, 55%, 3%)',
+  backgroundAccent: 'hsl(6, 50%, 9%)',
+  lightBackground: 'hsl(6, 50%, 9%)',
   
   // Text colors
-  textPrimary: '#FFFFFF',
-  textSecondary: '#B3B3B3',
-  textMuted: '#808080',
+  textPrimary: 'hsl(12, 60%, 98%)',
+  textSecondary: 'hsl(12, 45%, 72%)',
+  textMuted: 'hsl(12, 40%, 62%)',
   textWhite: '#FFFFFF',
     // Accent colors
-  accent: '#4ECDC4',
-  success: '#4CAF50',
-  warning: '#FFC107',
-  error: '#F44336',
+  accent: 'hsl(11, 40%, 40%)',
+  success: 'hsl(154, 35%, 47%)',
+  warning: 'hsl(52, 45%, 40%)',
+  error: 'hsl(8, 50%, 66%)',
+  info: 'hsl(217, 55%, 69%)',
   
   // Gradient colors
-  gradientStart: '#2596be',
-  gradientEnd: '#4ECDC4',
+  gradientStart: 'hsl(11, 55%, 72%)',
+  gradientEnd: 'hsl(187, 55%, 38%)',
   
   // Card and border colors
-  cardBackground: '#1E1E1E',
-  borderLight: '#333333',
-  border: '#404040',
+  cardBackground: 'hsl(6, 50%, 9%)',
+  borderLight: 'hsl(1, 55%, 16%)',
+  border: 'hsl(12, 55%, 26%)',
   shadow: 'rgba(0, 0, 0, 0.3)',
 };
 
