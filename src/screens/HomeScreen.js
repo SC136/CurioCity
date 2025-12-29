@@ -161,6 +161,12 @@ const HomeScreen = ({ navigation }) => {
         case 'Services':
             navigateTo('ServicesDetail');
             break;
+        case 'News':
+            navigateTo('NewsDetail');
+            break;
+        case 'Holy Places':
+            navigateTo('HolyPlacesDetail');
+            break;
         default:
             break;
     }

@@ -4,10 +4,10 @@ import { useAppTheme } from '../../hooks/useAppTheme';
 
 const CategoryFilter = ({ onCategorySelect }) => {
   const { colors } = useAppTheme();
-  const categories = ['Hotels', 'Restaurants', 'Services'];
+  const categories = ['Hotels', 'Restaurants', 'Services', 'News', 'Holy Places'];
 
   return (
-    <View className="my-8">
+    <View className="my-6">
       <ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false} 
@@ -16,19 +16,19 @@ const CategoryFilter = ({ onCategorySelect }) => {
         {categories.map((category, index) => (
           <TouchableOpacity
             key={index}
-            className="px-8 py-3 rounded-full mr-4 border"
+            className="px-5 py-2.5 rounded-full mr-3 border"
             style={{ 
               backgroundColor: colors.cardBackground,
               borderColor: colors.border,
               shadowColor: "#000",
-              shadowOffset: { width: 0, height: 2 },
+              shadowOffset: { width: 0, height: 1 },
               shadowOpacity: 0.05,
-              shadowRadius: 4,
-              elevation: 2,
+              shadowRadius: 2,
+              elevation: 1,
             }}
             onPress={() => onCategorySelect(category)}
           >
-            <Text className="font-semibold text-base" style={{ color: colors.textPrimary }}>
+            <Text className="font-inter-medium text-sm" style={{ color: colors.textPrimary }}>
               {category}
             </Text>
           </TouchableOpacity>
