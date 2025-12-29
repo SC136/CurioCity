@@ -5,10 +5,10 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  SafeAreaView,
   FlatList,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS } from '../constants/colors';
