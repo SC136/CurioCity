@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import './global.css';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, Text, TextInput, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_700Bold } from '@expo-google-fonts/inter';
 
 // Import theme provider and hook
 import { ThemeProvider } from './src/context/ThemeContext';
@@ -106,6 +107,36 @@ function AppContent() {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
+  });
+
+  useEffect(() => {
+    if (fontsLoaded) {
+      Text.defaultProps = Text.defaultProps || {};
+      Text.defaultProps.style = Text.defaultProps.style
+        ? [Text.defaultProps.style, { fontFamily: 'Inter_400Regular' }]
+        : { fontFamily: 'Inter_400Regular' };
+
+      TextInput.defaultProps = TextInput.defaultProps || {};
+      TextInput.defaultProps.style = TextInput.defaultProps.style
+        ? [TextInput.defaultProps.style, { fontFamily: 'Inter_400Regular' }]
+        : { fontFamily: 'Inter_400Regular' };
+    }
+  }, [fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return (
+      <SafeAreaProvider>
+        <View className="flex-1 items-center justify-center bg-white">
+          <ActivityIndicator size="large" />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <SafeAreaProvider>
       <ThemeProvider>

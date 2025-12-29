@@ -8,7 +8,14 @@ module.exports = {
     "./src/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        inter: ["Inter_400Regular", "System"],
+        "inter-medium": ["Inter_500Medium", "System"],
+        "inter-bold": ["Inter_700Bold", "System"],
+        sans: ["Inter_400Regular", "System"],
+      },
+    },
   },
   plugins: [],
 };
