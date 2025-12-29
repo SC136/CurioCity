@@ -45,9 +45,9 @@ const NearbyAccommodation = memo(({ data, onItemPress, onViewMore }) => {
               </Text>
               
               <View className="flex-row items-center justify-between mt-2">
-                <View className="flex-row items-center bg-amber-100 dark:bg-amber-900/30 px-2 py-1 rounded">
-                  <Ionicons name="star" size={12} color="#FFA500" />
-                  <Text className="text-xs ml-1 font-bold" style={{ color: colors.textPrimary }}>
+                <View className="flex-row items-center px-2 py-1 rounded" style={{ backgroundColor: '#FFE4D6' }}>
+                  <Ionicons name="star" size={12} color="#FDB813" />
+                  <Text className="text-xs ml-1 font-bold" style={{ color: '#D97706' }}>
                     {item.rating}
                   </Text>
                 </View>

@@ -16,12 +16,13 @@ const Header = ({ cityName }) => {
       </View>
       <TouchableOpacity 
         onPress={toggleTheme}
-        className="w-12 h-12 rounded-full items-center justify-center bg-gray-100 dark:bg-gray-800"
+        className="w-12 h-12 rounded-full items-center justify-center"
+        style={{ backgroundColor: isDarkMode ? colors.cardBackground : colors.primary + '15' }}
       >
         <Ionicons 
           name={isDarkMode ? "sunny" : "moon"} 
           size={24} 
-          color={colors.textPrimary} 
+          color={isDarkMode ? "#FDB813" : "#6366F1"} 
         />
       </TouchableOpacity>
     </View>

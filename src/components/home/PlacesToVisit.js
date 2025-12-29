@@ -59,8 +59,8 @@ const PlacesToVisit = memo(({ data, onItemPress }) => {
           )}
           {item.rating && (
             <View className="flex-row items-center px-3 py-1.5 rounded-full" style={{ backgroundColor: colors.primary + '20' }}>
-              <Ionicons name="star" size={16} color="#FFD700" />
-              <Text className="text-sm font-bold ml-1.5" style={{ color: colors.textPrimary }}>{item.rating}</Text>
+              <Ionicons name="star" size={16} color="#FDB813" />
+              <Text className="text-sm font-bold ml-1.5" style={{ color: '#FFFFFF' }}>{item.rating}</Text>
             </View>
           )}
         </View>
