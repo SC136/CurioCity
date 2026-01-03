@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,6 +33,8 @@ const HomeScreen = ({ navigation }) => {
   const { colors } = useAppTheme();
   const [currentLocation, setCurrentLocation] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const fetchInProgress = useRef(false);
+  const lastFetchCoords = useRef(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [error, setError] = useState(null);
@@ -75,18 +77,31 @@ const HomeScreen = ({ navigation }) => {
   // Fetch all data when location changes
   useEffect(() => {
     if (currentLocation?.coordinates) {
+      // Check if we already have data for this location (from pre-fetch)
+      const coordsKey = `${currentLocation.coordinates.latitude.toFixed(4)}_${currentLocation.coordinates.longitude.toFixed(4)}`;
+      if (lastFetchCoords.current === coordsKey) {
+        return;
+      }
       fetchAllData();
     }
   }, [currentLocation?.coordinates?.latitude, currentLocation?.coordinates?.longitude]);
 
-  const fetchAllData = async () => {
+  const fetchAllData = async (forceRefresh = false) => {
     if (!currentLocation?.coordinates) {
-      console.log('No coordinates available, returning');
       return;
     }
 
     const { latitude, longitude } = currentLocation.coordinates;
     const locationName = currentLocation.name || 'Local Area';
+    
+    // Check if we're already fetching for these coordinates
+    const coordsKey = `${latitude.toFixed(4)}_${longitude.toFixed(4)}`;
+    if (!forceRefresh && (fetchInProgress.current || lastFetchCoords.current === coordsKey)) {
+      return;
+    }
+    
+    fetchInProgress.current = true;
+    lastFetchCoords.current = coordsKey;
 
     setLoadingStates({
       places: true,
@@ -122,11 +137,21 @@ const HomeScreen = ({ navigation }) => {
       // Update data states
       if (placesResult.status === 'fulfilled') {
         setPlacesToVisit(sortByRating(placesResult.value || []));
+      } else {
+        setPlacesToVisit([]);
       }
       setLoadingStates(prev => ({ ...prev, places: false }));
 
       if (restaurantsResult.status === 'fulfilled') {
-        setRestaurants(sortByRating(restaurantsResult.value || []));
+        const restaurantData = restaurantsResult.value || [];
+        // Only update if we got data or if we don't have any existing data
+        if (restaurantData.length > 0 || restaurants.length === 0) {
+          setRestaurants(sortByRating(restaurantData));
+        }
+      } else {
+        if (restaurants.length === 0) {
+          setRestaurants([]);
+        }
       }
       setLoadingStates(prev => ({ ...prev, restaurants: false }));
 
@@ -135,24 +160,37 @@ const HomeScreen = ({ navigation }) => {
         const sortedAccommodation = sortByRating(accommodationData);
         setAccommodation(sortedAccommodation);
       } else {
-        console.error('Accommodation fetch failed:', accommodationResult.reason);
         setAccommodation([]);
       }
       setLoadingStates(prev => ({ ...prev, accommodation: false }));
 
-      console.log('Holy places result:', holyPlacesResult.status, holyPlacesResult.status === 'fulfilled' ? holyPlacesResult.value?.length : holyPlacesResult.reason);
       if (holyPlacesResult.status === 'fulfilled') {
-        setHolyPlaces(holyPlacesResult.value || []);
+        const holyPlacesData = holyPlacesResult.value || [];
+        // Only update if we got data or if we don't have any existing data
+        if (holyPlacesData.length > 0 || holyPlaces.length === 0) {
+          setHolyPlaces(holyPlacesData);
+        }
+      } else {
+        // Only set empty if we don't have existing data
+        if (holyPlaces.length === 0) {
+          setHolyPlaces([]);
+        }
       }
       setLoadingStates(prev => ({ ...prev, holyPlaces: false }));
 
-      console.log('Services result:', servicesResult.status, servicesResult.status === 'fulfilled' ? servicesResult.value?.length : servicesResult.reason);
       if (servicesResult.status === 'fulfilled') {
-        setServices(servicesResult.value || []);
+        const servicesData = servicesResult.value || [];
+        // Only update if we got data or if we don't have any existing data
+        if (servicesData.length > 0 || services.length === 0) {
+          setServices(servicesData);
+        }
+      } else {
+        if (services.length === 0) {
+          setServices([]);
+        }
       }
       setLoadingStates(prev => ({ ...prev, services: false }));
 
-      console.log('News result:', newsResult.status, newsResult.status === 'fulfilled' ? newsResult.value?.length : newsResult.reason);
       if (newsResult.status === 'fulfilled') {
         setNews(newsResult.value || []);
       }
@@ -165,13 +203,16 @@ const HomeScreen = ({ navigation }) => {
     } catch (error) {
       console.error('Error fetching data:', error);
       setError('Failed to load some data. Pull to refresh.');
+    } finally {
+      fetchInProgress.current = false;
     }
   };
 
   const onRefresh = useCallback(async () => {
     setIsRefreshing(true);
     setError(null);
-    await fetchAllData();
+    lastFetchCoords.current = null; // Reset to allow refresh
+    await fetchAllData(true);
     setIsRefreshing(false);
   }, [currentLocation]);
 
@@ -186,15 +227,27 @@ const HomeScreen = ({ navigation }) => {
       
       if (locationDetails) {
         setCurrentLocation(locationDetails);
+        // Use pre-fetched data if available from getLocationDetails
+        if (locationDetails.hasRealData) {
+          usePreFetchedData(locationDetails);
+        }
       } else {
         const defaultLocation = await LocationService.getDefaultLocationWithWikipedia();
         setCurrentLocation(defaultLocation);
+        // Use pre-fetched data from default location
+        if (defaultLocation.hasRealData) {
+          usePreFetchedData(defaultLocation);
+        }
       }
     } catch (error) {
       console.log('Location not available, using default location');
       try {
         const defaultLocation = await LocationService.getDefaultLocationWithWikipedia();
         setCurrentLocation(defaultLocation);
+        // Use pre-fetched data from default location
+        if (defaultLocation.hasRealData) {
+          usePreFetchedData(defaultLocation);
+        }
       } catch (fallbackError) {
         console.error('Error loading default location:', fallbackError);
         setCurrentLocation({
@@ -211,8 +264,45 @@ const HomeScreen = ({ navigation }) => {
       setIsLoading(false);
     }
   };
+  
+  // Helper function to use pre-fetched data from location details
+  const usePreFetchedData = (locationData) => {
+    const coordsKey = `${locationData.coordinates?.latitude?.toFixed(4)}_${locationData.coordinates?.longitude?.toFixed(4)}`;
+    lastFetchCoords.current = coordsKey;
+    
+    if (locationData.placesToVisit) {
+      setPlacesToVisit(sortByRating(locationData.placesToVisit));
+    }
+    if (locationData.restaurants) {
+      setRestaurants(sortByRating(locationData.restaurants));
+    }
+    if (locationData.accommodation) {
+      setAccommodation(sortByRating(locationData.accommodation));
+    }
+    if (locationData.holyPlaces) {
+      setHolyPlaces(locationData.holyPlaces);
+    }
+    if (locationData.services) {
+      setServices(locationData.services);
+    }
+    if (locationData.news) {
+      setNews(locationData.news);
+    }
+    
+    // Set loading states to false
+    setLoadingStates({
+      places: false,
+      restaurants: false,
+      accommodation: false,
+      holyPlaces: false,
+      services: false,
+      news: false,
+    });
+  };
 
   const handleLocationSelect = (location) => {
+    // Reset the last fetch coords to allow fresh fetch for new location
+    lastFetchCoords.current = null;
     setCurrentLocation(location);
     // Data will be fetched automatically via useEffect
   };

@@ -8,7 +8,7 @@ import { HolyPlaceSkeleton } from '../common/LoadingSkeleton';
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.7;
 
-const HolyPlaces = memo(({ data, onItemPress, loading = false }) => {
+const HolyPlaces = memo(({ data = [], onItemPress, loading = false }) => {
   const { colors } = useAppTheme();
 
   const renderItem = useCallback(({ item }) => (
@@ -75,7 +75,7 @@ const HolyPlaces = memo(({ data, onItemPress, loading = false }) => {
           <HolyPlaceSkeleton />
           <HolyPlaceSkeleton />
         </View>
-      ) : data.length === 0 ? (
+      ) : !data || data.length === 0 ? (
         <View className="items-center justify-center py-8 px-6">
           <Ionicons name="business-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
           <Text className="text-base font-semibold mt-4" style={{ color: colors.textPrimary }}>
