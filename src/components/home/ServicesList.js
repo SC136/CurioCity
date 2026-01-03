@@ -1,18 +1,22 @@
-import React, { memo, useMemo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, FlatList } from 'react-native';
+import React, { memo, useCallback } from 'react';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { Ionicons } from '@expo/vector-icons';
-import { ListItemSkeleton } from '../common/LoadingSkeleton';
-import { spacing, fontSizes, borderRadius, shadows } from '../../utils/responsiveDesign';
 
-const ServicesList = memo(({ data, onItemPress, loading = false }) => {
+const ServicesList = memo(({ data = [], loading = false, onItemPress }) => {
   const { colors } = useAppTheme();
+
+  const getBackgroundColor = () => {
+    // Get the actual background color from the theme
+    return colors.background || '#FFFFFF';
+  };
 
   // Get service icon based on type
   const getServiceIcon = useCallback((type) => {
     if (!type) return 'business';
     const typeLower = type.toLowerCase();
-    
+
     if (typeLower.includes('bank')) return 'card';
     if (typeLower.includes('shop') || typeLower.includes('store')) return 'cart';
     if (typeLower.includes('sport') || typeLower.includes('gym')) return 'fitness';
@@ -22,150 +26,83 @@ const ServicesList = memo(({ data, onItemPress, loading = false }) => {
     if (typeLower.includes('post')) return 'mail';
     if (typeLower.includes('library')) return 'library';
     if (typeLower.includes('school') || typeLower.includes('education')) return 'school';
-    
+    if (typeLower.includes('restaurant') || typeLower.includes('food')) return 'restaurant';
+    if (typeLower.includes('hotel') || typeLower.includes('lodging')) return 'bed';
+    if (typeLower.includes('fuel') || typeLower.includes('petrol') || typeLower.includes('gas')) return 'car';
+
     return 'business';
   }, []);
 
-  // Only show first 10 items to avoid long lists
-  const displayData = useMemo(() => data.slice(0, 10), [data]);
-
-  const renderServiceItem = useCallback(({ item, index }) => (
-    <TouchableOpacity 
-      key={index}
-      style={{
-        padding: spacing.md,
-        marginBottom: spacing.sm,
-        borderRadius: borderRadius.lg,
-        backgroundColor: colors.cardBackground,
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        ...shadows.sm,
-      }}
-      onPress={() => onItemPress(item)}
-      activeOpacity={0.7}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-        <View 
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 22,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: spacing.md,
-            backgroundColor: colors.primary + '20',
-          }}
-        >
-          <Ionicons name={getServiceIcon(item.type)} size={20} color={colors.primary} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text 
-            numberOfLines={1} 
-            style={{ 
-              fontWeight: '700',
-              fontSize: fontSizes.base,
-              color: colors.textPrimary,
-            }}
-          >
-            {item.name}
-          </Text>
-          {item.distance && (
-            <Text 
-              style={{
-                fontSize: fontSizes.sm,
-                marginTop: spacing.xs,
-                color: colors.textSecondary,
-              }}
-            >
-              {(item.distance / 1000).toFixed(1)} km away
-            </Text>
-          )}
-        </View>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
-    </TouchableOpacity>
-  ), [colors, getServiceIcon, onItemPress]);
-
   return (
-    <View style={{ marginBottom: spacing.xl, paddingHorizontal: spacing.lg }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.lg }}>
-        <View style={{ height: 1, flex: 1, backgroundColor: colors.textSecondary + '40' }} />
-        <Text 
-          style={{
-            fontSize: fontSizes.xl,
-            fontWeight: 'bold',
-            marginHorizontal: spacing.lg,
-            letterSpacing: 0.5,
-            color: colors.textPrimary,
-          }}
-        >
+    <View className="mb-10 px-6">
+      <View className="flex-row items-center justify-center mb-8">
+        <View className="h-[2px] flex-1 bg-gray-300 dark:bg-gray-600" />
+        <Text className="text-2xl font-bold mx-6 tracking-wide" style={{ color: colors.textPrimary }}>
           Services & Amenities
         </Text>
-        <View style={{ height: 1, flex: 1, backgroundColor: colors.textSecondary + '40' }} />
+        <View className="h-[2px] flex-1 bg-gray-300 dark:bg-gray-600" />
       </View>
       
-      {loading ? (
-        <View style={{ paddingVertical: spacing.md }}>
-          <ListItemSkeleton />
-          <ListItemSkeleton />
-          <ListItemSkeleton />
-          <ListItemSkeleton />
-        </View>
-      ) : data.length === 0 ? (
-        <View style={{ alignItems: 'center', justifyContent: 'center', paddingVertical: spacing.xl }}>
-          <Ionicons name="business-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
-          <Text 
-            style={{
-              fontSize: fontSizes.base,
-              fontWeight: '600',
-              marginTop: spacing.lg,
-              color: colors.textPrimary,
-            }}
-          >
-            No services found nearby
-          </Text>
-          <Text 
-            style={{
-              fontSize: fontSizes.sm,
-              textAlign: 'center',
-              marginTop: spacing.md,
-              color: colors.textSecondary,
-            }}
-          >
-            Try searching in a different area
-          </Text>
-        </View>
-      ) : (
-        <View>
-          {displayData.map((item, index) => (
-            renderServiceItem({ item, index })
-          ))}
-          {data.length > 10 && (
-            <Text 
-              style={{
-                textAlign: 'center',
-                fontSize: fontSizes.sm,
-                marginTop: spacing.md,
-                color: colors.textSecondary,
-              }}
+      <View 
+        className="overflow-hidden h-[500px] relative"
+      >
+        {loading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : !data || data.length === 0 ? (
+          <View className="flex-1 items-center justify-center">
+            <Ionicons name="business-outline" size={48} color={colors.textSecondary} />
+            <Text className="text-base mt-3" style={{ color: colors.textSecondary }}>No services found nearby</Text>
+          </View>
+        ) : (
+        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 20, paddingBottom: 20 }}>
+          {data.map((item, index) => (
+            <TouchableOpacity 
+              key={item.id || index}
+              className="p-6 flex-row justify-between items-center"
+              onPress={() => onItemPress(item)}
+              activeOpacity={0.7}
             >
-              +{data.length - 10} more services
-            </Text>
-          )}
-        </View>
-      )}
+              <View className="flex-row items-center flex-1">
+                <View className="w-14 h-14 rounded-full items-center justify-center mr-5" style={{ backgroundColor: colors.primary + '20' }}>
+                    <Ionicons name={getServiceIcon(item.type)} size={26} color={colors.primary} />
+                </View>
+                <View className="flex-1">
+                  <Text className="font-bold text-lg" numberOfLines={1} style={{ color: colors.textPrimary }}>
+                      {item.name}
+                  </Text>
+                  {item.distance && (
+                    <Text className="text-sm mt-1" style={{ color: colors.textSecondary }}>
+                      {(item.distance / 1000).toFixed(1)} km away
+                    </Text>
+                  )}
+                </View>
+              </View>
+              <View className="flex-row items-center ml-3">
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        )}
+        {!loading && data && data.length > 0 && (
+        <>
+        <LinearGradient
+          colors={[getBackgroundColor(), 'transparent']}
+          className="absolute top-0 left-0 right-0 h-16 pointer-events-none"
+        />
+        <LinearGradient
+          colors={['transparent', getBackgroundColor()]}
+          className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
+        />
+        </>
+        )}
+      </View>
     </View>
-  );
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.loading === nextProps.loading &&
-    prevProps.data?.length === nextProps.data?.length &&
-    prevProps.onItemPress === nextProps.onItemPress
   );
 });
 
 ServicesList.displayName = 'ServicesList';
 
 export default ServicesList;
-

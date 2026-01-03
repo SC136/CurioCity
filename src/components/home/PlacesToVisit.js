@@ -1,40 +1,34 @@
 import React, { memo, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Dimensions, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '../../hooks/useAppTheme';
 import { CardSkeleton } from '../common/LoadingSkeleton';
-import { getCardWidth, spacing, fontSizes, borderRadius, shadows } from '../../utils/responsiveDesign';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const CARD_WIDTH = getCardWidth();
-const CARD_MARGIN = Platform.OS === 'web' ? spacing.md : spacing.sm;
+const CARD_WIDTH = SCREEN_WIDTH * 0.85;
 
-const PlacesToVisit = memo(({ data, onItemPress, loading = false }) => {
+const PlacesToVisit = memo(({ data = [], onItemPress, loading = false }) => {
   const { colors } = useAppTheme();
 
   const renderItem = useCallback(({ item }) => (
     <TouchableOpacity 
-      className="rounded-3xl overflow-hidden"
+      className="mr-5 rounded-3xl overflow-hidden"
       style={{ 
         width: CARD_WIDTH,
-        marginRight: CARD_MARGIN,
         backgroundColor: colors.cardBackground,
-        ...shadows.lg,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.08,
+        shadowRadius: 16,
+        elevation: 10,
       }}
       onPress={() => onItemPress(item)}
-      activeOpacity={0.7}
     >
       <View className="w-full relative">
-        <View 
-          className="w-full items-center justify-center" 
-          style={{ 
-            height: 200,
-            backgroundColor: colors.primary + '20' 
-          }}
-        >
-          <Ionicons name="location" size={48} color={colors.primary} opacity={0.4} />
-          <Text className="text-xs text-gray-400 font-medium mt-2">Place Photo</Text>
+        <View className="h-80 w-full items-center justify-center bg-gradient-to-br" style={{ backgroundColor: colors.primary + '20' }}>
+          <Ionicons name="location" size={64} color={colors.primary} opacity={0.4} />
+          <Text className="text-sm text-gray-400 font-medium mt-3">Place Photo</Text>
         </View>
         
         {/* Gradient blur overlay at bottom of image */}
@@ -45,131 +39,89 @@ const PlacesToVisit = memo(({ data, onItemPress, loading = false }) => {
             bottom: 0,
             left: 0,
             right: 0,
-            height: 50,
+            height: 60,
           }}
         />
       </View>
       
-      <View style={{ padding: spacing.md }}>
-        <Text 
-          className="font-bold mb-3" 
-          numberOfLines={2} 
-          style={{ color: colors.textPrimary, fontSize: fontSizes.lg }}
-        >
+      <View className="p-6">
+        <Text className="font-bold text-xl mb-3" numberOfLines={2} style={{ color: colors.textPrimary }}>
           {item.name}
         </Text>
         
-        <View className="flex-row items-center justify-between mb-3">
+        <View className="flex-row items-center justify-between mb-4">
           {item.type && (
-            <View className="flex-row items-center flex-1">
-              <Ionicons name="pricetag" size={14} color={colors.textSecondary} />
-              <Text 
-                className="text-xs font-medium ml-1.5 capitalize flex-1" 
-                numberOfLines={1}
-                style={{ color: colors.textSecondary }}
-              >
+            <View className="flex-row items-center">
+              <Ionicons name="pricetag" size={16} color={colors.textSecondary} />
+              <Text className="text-sm font-medium ml-2 capitalize" style={{ color: colors.textSecondary }}>
                 {item.type}
               </Text>
             </View>
           )}
           {item.rating && (
-            <View 
-              className="flex-row items-center px-2 py-1 rounded-full ml-2" 
-              style={{ backgroundColor: colors.primary + '20' }}
-            >
-              <Ionicons name="star" size={12} color="#FDB813" />
-              <Text 
-                className="text-xs font-bold ml-1" 
-                style={{ color: colors.textPrimary }}
-              >
-                {item.rating}
-              </Text>
+            <View className="flex-row items-center px-3 py-1.5 rounded-full" style={{ backgroundColor: colors.primary + '20' }}>
+              <Ionicons name="star" size={16} color="#FDB813" />
+              <Text className="text-sm font-bold ml-1.5" style={{ color: '#FFFFFF' }}>{item.rating}</Text>
             </View>
           )}
         </View>
         
         {item.distance && (
           <View className="flex-row items-center justify-between">
-            <View className="flex-row items-center flex-1">
-              <Ionicons name="navigate" size={14} color={colors.primary} />
-              <Text 
-                className="text-xs font-medium ml-1.5" 
-                style={{ color: colors.textSecondary }}
-              >
-                {(item.distance / 1000).toFixed(1)} km
+            <View className="flex-row items-center">
+              <Ionicons name="navigate" size={16} color={colors.primary} />
+              <Text className="text-sm font-medium ml-2" style={{ color: colors.textSecondary }}>
+                {(item.distance / 1000).toFixed(1)} km away
               </Text>
             </View>
-            <TouchableOpacity 
-              className="px-3 py-1.5 rounded-full" 
-              style={{ backgroundColor: colors.primary }}
-              onPress={() => onItemPress(item)}
-            >
-              <Text className="text-xs font-bold text-white">View</Text>
-            </TouchableOpacity>
+            <View className="px-5 py-2.5 rounded-full" style={{ backgroundColor: colors.primary }}>
+              <Text className="text-sm font-bold text-white">View Details</Text>
+            </View>
           </View>
         )}
       </View>
     </TouchableOpacity>
   ), [colors, onItemPress]);
 
-  if (loading) {
-    return (
-      <View style={{ paddingHorizontal: spacing.md, marginBottom: spacing.lg }}>
-        <Text 
-          className="font-bold mb-4" 
-          style={{ color: colors.textPrimary, fontSize: fontSizes.xl }}
-        >
-          🌟 Places to Visit
+  return (
+    <View className="mb-2" style={{ overflow: 'visible' }}>
+      <View className="flex-row items-center justify-center px-6 mb-5">
+        <View className="h-[1px] flex-1" style={{ backgroundColor: colors.border }} />
+        <Text className="text-lg font-bold mx-4 tracking-widest uppercase" style={{ color: colors.textPrimary }}>
+          Places to Visit
         </Text>
-        <ScrollView 
-          horizontal 
+        <View className="h-[1px] flex-1" style={{ backgroundColor: colors.border }} />
+      </View>
+      
+      {loading ? (
+        <View className="flex-row px-5 pb-5">
+          <CardSkeleton />
+          <CardSkeleton />
+        </View>
+      ) : !data || data.length === 0 ? (
+        <View className="items-center justify-center py-8 px-6">
+          <Ionicons name="location-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+          <Text className="text-base font-semibold mt-4" style={{ color: colors.textPrimary }}>
+            No places found nearby
+          </Text>
+          <Text className="text-sm text-center mt-2" style={{ color: colors.textSecondary }}>
+            Try searching in a different area
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
           showsHorizontalScrollIndicator={false}
-          scrollEventThrottle={16}
-          decelerationRate="fast"
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, paddingBottom: 20 }}
         >
-          {[1, 2, 3].map((index) => (
-            <View key={index} style={{ marginRight: CARD_MARGIN }}>
-              <CardSkeleton width={CARD_WIDTH} height={350} />
+          {data.map((item, index) => (
+            <View key={`place-${index}`}>
+              {renderItem({ item })}
             </View>
           ))}
         </ScrollView>
-      </View>
-    );
-  }
-
-  if (!data || data.length === 0) {
-    return null;
-  }
-
-  return (
-    <View style={{ paddingHorizontal: spacing.md, marginBottom: spacing.lg }}>
-      <Text 
-        className="font-bold mb-4" 
-        style={{ color: colors.textPrimary, fontSize: fontSizes.xl }}
-      >
-        🌟 Places to Visit
-      </Text>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        scrollEventThrottle={16}
-        decelerationRate="fast"
-        contentContainerStyle={{ paddingRight: spacing.md }}
-      >
-        {data.map((item, index) => (
-          <View key={item.id || index}>
-            {renderItem({ item })}
-          </View>
-        ))}
-      </ScrollView>
+      )}
     </View>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison for better memoization
-  return (
-    prevProps.loading === nextProps.loading &&
-    prevProps.data?.length === nextProps.data?.length &&
-    prevProps.onItemPress === nextProps.onItemPress
   );
 });
 
