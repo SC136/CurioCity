@@ -1,15 +1,14 @@
-import React, { memo } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { memo, useMemo } from 'react';
+import { View, Text, TouchableOpacity, Image } from 'react-native';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { Ionicons } from '@expo/vector-icons';
+import { ListItemSkeleton } from '../common/LoadingSkeleton';
 
-const LatestNews = memo(({ data, onItemPress }) => {
+const LatestNews = memo(({ data, onItemPress, loading = false }) => {
   const { colors } = useAppTheme();
 
-  const getBackgroundColor = () => {
-    // Get the actual background color from the theme
-    return colors.background || '#FFFFFF';
-  };
+  // Only show first 5 news items
+  const displayData = useMemo(() => data.slice(0, 5), [data]);
 
   return (
     <View className="mb-10 px-6">
@@ -21,42 +20,62 @@ const LatestNews = memo(({ data, onItemPress }) => {
         <View className="h-[2px] flex-1 bg-gray-300 dark:bg-gray-600" />
       </View>
       
-      <View 
-        className="overflow-hidden h-[500px] relative"
-      >
-        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 24, paddingBottom: 24 }}>
-          {data.map((item, index) => (
+      {loading ? (
+        <View className="py-4">
+          <ListItemSkeleton />
+          <ListItemSkeleton />
+          <ListItemSkeleton />
+        </View>
+      ) : data.length === 0 ? (
+        <View className="items-center justify-center py-8">
+          <Ionicons name="newspaper-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+          <Text className="text-base font-semibold mt-4" style={{ color: colors.textPrimary }}>
+            No news available
+          </Text>
+          <Text className="text-sm text-center mt-2" style={{ color: colors.textSecondary }}>
+            Check back later for updates
+          </Text>
+        </View>
+      ) : (
+        <View>
+          {displayData.map((item, index) => (
             <TouchableOpacity 
               key={index}
-              className="p-6"
+              className="p-4 mb-4 rounded-xl"
+              style={{ backgroundColor: colors.cardBackground }}
               onPress={() => onItemPress(item)}
               activeOpacity={0.7}
             >
               <View className="flex-row">
-                <View className="h-28 w-28 bg-gray-200 dark:bg-gray-700 rounded-2xl mr-5 items-center justify-center">
-                    <Text className="text-xs text-gray-500 font-medium">News Image</Text>
-                </View>
+                {item.imageUrl ? (
+                  <Image 
+                    source={{ uri: item.imageUrl }}
+                    className="h-24 w-24 rounded-xl mr-4"
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View className="h-24 w-24 rounded-xl mr-4 items-center justify-center" style={{ backgroundColor: colors.primary + '20' }}>
+                    <Ionicons name="newspaper-outline" size={28} color={colors.primary} />
+                  </View>
+                )}
                 <View className="flex-1 justify-center">
-                    <Text className="font-bold text-lg mb-2 leading-6" style={{ color: colors.textPrimary }}>
+                    <Text className="font-bold text-base mb-2" numberOfLines={2} style={{ color: colors.textPrimary }}>
                         {item.title}
                     </Text>
-                    <Text className="text-base leading-6" numberOfLines={2} style={{ color: colors.textSecondary }}>
+                    <Text className="text-sm" numberOfLines={2} style={{ color: colors.textSecondary }}>
                         {item.description}
                     </Text>
+                    {item.source && (
+                      <Text className="text-xs mt-2" style={{ color: colors.textSecondary }}>
+                        {item.source} • {item.publishedAt ? new Date(item.publishedAt).toLocaleDateString() : ''}
+                      </Text>
+                    )}
                 </View>
               </View>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-        <LinearGradient
-          colors={[getBackgroundColor(), 'transparent']}
-          className="absolute top-0 left-0 right-0 h-16 pointer-events-none"
-        />
-        <LinearGradient
-          colors={['transparent', getBackgroundColor()]}
-          className="absolute bottom-0 left-0 right-0 h-16 pointer-events-none"
-        />
-      </View>
+        </View>
+      )}
     </View>
   );
 });

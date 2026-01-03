@@ -2,12 +2,15 @@ import React, { memo, useCallback, useMemo } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { GridItemSkeleton } from '../common/LoadingSkeleton';
 
-const NearbyAccommodation = memo(({ data, onItemPress, onViewMore }) => {
+const NearbyAccommodation = memo(({ data = [], onItemPress, onViewMore, loading = false }) => {
   const { colors } = useAppTheme();
   
   // Take only first 4 items for the grid
-  const displayData = useMemo(() => data.slice(0, 4), [data]);
+  const displayData = useMemo(() => {
+    return data && data.length > 0 ? data.slice(0, 4) : [];
+  }, [data]);
 
   return (
     <View className="mb-6">
@@ -19,63 +22,84 @@ const NearbyAccommodation = memo(({ data, onItemPress, onViewMore }) => {
         <View className="h-[1px] flex-1 bg-gray-300 dark:bg-gray-700" />
       </View>
       
-      <View className="flex-row flex-wrap justify-between px-4">
-        {displayData.map((item, index) => (
-          <TouchableOpacity 
-            key={index}
-            className="w-[48%] mb-4 rounded-xl overflow-hidden"
-            style={{ 
-              backgroundColor: colors.cardBackground,
-              shadowColor: "#000",
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.1,
-              shadowRadius: 6,
-              elevation: 4,
-            }}
-            onPress={() => onItemPress(item)}
-          >
-            <View className="h-48 w-full items-center justify-center bg-gray-300 dark:bg-gray-700">
-              <Ionicons name="bed-outline" size={40} color="#9CA3AF" />
-              <Text className="text-xs text-gray-500 mt-2">Accommodation</Text>
-            </View>
-            
-            <View className="p-3 pb-4">
-              <Text className="font-bold text-base mb-1" numberOfLines={1} style={{ color: colors.textPrimary }}>
-                {item.name}
-              </Text>
-              
-              <View className="flex-row items-center justify-between mt-2">
-                <View className="flex-row items-center px-2 py-1 rounded" style={{ backgroundColor: '#FFE4D6' }}>
-                  <Ionicons name="star" size={12} color="#FDB813" />
-                  <Text className="text-xs ml-1 font-bold" style={{ color: '#D97706' }}>
-                    {item.rating}
-                  </Text>
-                </View>
-                
-                <TouchableOpacity 
-                  className="p-1"
-                  onPress={() => onItemPress(item)}
-                >
-                  <Ionicons name="bookmark-outline" size={20} color={colors.textSecondary} />
-                </TouchableOpacity>
+      {loading ? (
+        <View className="flex-row flex-wrap justify-between px-4">
+          <GridItemSkeleton />
+          <GridItemSkeleton />
+          <GridItemSkeleton />
+          <GridItemSkeleton />
+        </View>
+      ) : !data || data.length === 0 ? (
+        <View className="items-center justify-center py-8 px-6">
+          <Ionicons name="bed-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+          <Text className="text-base font-semibold mt-4" style={{ color: colors.textPrimary }}>
+            No accommodation found
+          </Text>
+          <Text className="text-sm text-center mt-2" style={{ color: colors.textSecondary }}>
+            Try searching in a different area
+          </Text>
+        </View>
+      ) : (
+        <View className="flex-row flex-wrap justify-between px-4">
+          {displayData.map((item, index) => (
+            <TouchableOpacity 
+              key={index}
+              className="w-[48%] mb-4 rounded-xl overflow-hidden"
+              style={{ 
+                backgroundColor: colors.cardBackground,
+                shadowColor: "#000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.1,
+                shadowRadius: 6,
+                elevation: 4,
+              }}
+              onPress={() => onItemPress(item)}
+            >
+              <View className="h-48 w-full items-center justify-center bg-gray-300 dark:bg-gray-700">
+                <Ionicons name="bed-outline" size={40} color="#9CA3AF" />
+                <Text className="text-xs text-gray-500 mt-2">Accommodation</Text>
               </View>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+              
+              <View className="p-3 pb-4">
+                <Text className="font-bold text-base mb-1" numberOfLines={1} style={{ color: colors.textPrimary }}>
+                  {item.name}
+                </Text>
+                
+                <View className="flex-row items-center justify-between mt-2">
+                  <View className="flex-row items-center px-2 py-1 rounded" style={{ backgroundColor: '#FFE4D6' }}>
+                    <Ionicons name="star" size={12} color="#FDB813" />
+                    <Text className="text-xs ml-1 font-bold" style={{ color: '#D97706' }}>
+                      {item.rating || 'N/A'}
+                    </Text>
+                  </View>
+                  
+                  <TouchableOpacity 
+                    className="p-1"
+                    onPress={() => onItemPress(item)}
+                  >
+                    <Ionicons name="bookmark-outline" size={20} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
       
-      <TouchableOpacity 
-        className="self-center px-6 py-2.5 rounded-full border mt-6"
-        style={{ 
-          borderColor: colors.border,
-          backgroundColor: colors.cardBackground,
-        }}
-        onPress={onViewMore}
-      >
-        <Text className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
-          View More Accommodation
-        </Text>
-      </TouchableOpacity>
+      {!loading && data.length > 0 && (
+        <TouchableOpacity 
+          className="self-center px-6 py-2.5 rounded-full border mt-6"
+          style={{ 
+            borderColor: colors.border,
+            backgroundColor: colors.cardBackground,
+          }}
+          onPress={onViewMore}
+        >
+          <Text className="text-sm font-semibold" style={{ color: colors.textPrimary }}>
+            View More Accommodation
+          </Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 });

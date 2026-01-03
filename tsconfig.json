@@ -4,19 +4,19 @@
     "noEmit": true,
     "jsx": "react-native",
     "skipLibCheck": true,
-    "types": [
-      "nativewind/types"
-    ],
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "strict": true,
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "**/*",
-    "nativewind-env.d.ts"
+    "**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "build"
-  ],
-  "extends": "expo/tsconfig.base"
+    "build",
+    "nativewind-env.d.ts"
+  ]
 }

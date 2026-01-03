@@ -1,10 +1,17 @@
 import * as Location from 'expo-location';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   NEWSDATA_API_KEY, 
   OPENTRIPMAP_API_KEY, 
   FOURSQUARE_API_KEY, 
-  GEMINI_API_KEY 
+  GEMINI_API_KEY,
+  GEOAPIFY_API_KEY,
+  WAQI_API_TOKEN,
+  EVENTBRITE_API_TOKEN
 } from '@env';
+
+// Cache configuration
+const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
 
 // API Configuration
 const API_CONFIG = {
@@ -13,7 +20,7 @@ const API_CONFIG = {
     baseUrl: 'https://newsdata.io/api/1/news',
     apiKey: NEWSDATA_API_KEY
   },
-    // OpenTripMap API
+  // OpenTripMap API
   OPENTRIPMAP_API: {
     baseUrl: 'https://api.opentripmap.com/0.1/en/places',
     apiKey: OPENTRIPMAP_API_KEY
@@ -39,6 +46,24 @@ const API_CONFIG = {
   // Overpass API for holy places
   OVERPASS_API: {
     baseUrl: 'https://overpass-api.de/api/interpreter'
+  },
+  
+  // Geoapify API for places and accommodation
+  GEOAPIFY_API: {
+    baseUrl: 'https://api.geoapify.com/v2/places',
+    apiKey: GEOAPIFY_API_KEY
+  },
+  
+  // World Air Quality Index API
+  WAQI_API: {
+    baseUrl: 'https://api.waqi.info/feed',
+    apiKey: WAQI_API_TOKEN
+  },
+  
+  // Eventbrite API for events
+  EVENTBRITE_API: {
+    baseUrl: 'https://www.eventbriteapi.com/v3',
+    apiKey: EVENTBRITE_API_TOKEN
   }
 };
 
@@ -431,18 +456,81 @@ export const LocationService = {
       // Get restaurants from OpenTripMap
       const opentripmapPromise = this.getOpenTripMapRestaurants(latitude, longitude);
       
-      // Wait for both APIs to complete
-      const [foursquareResults, opentripmapResults] = await Promise.all([
+      // Get restaurants from Overpass API (most reliable)
+      const overpassPromise = this.getOverpassRestaurants(latitude, longitude);
+      
+      // Wait for all APIs to complete
+      const [foursquareResults, opentripmapResults, overpassResults] = await Promise.allSettled([
         foursquarePromise,
-        opentripmapPromise
+        opentripmapPromise,
+        overpassPromise
       ]);
       
-      // Combine and deduplicate results
-      const combinedResults = [...foursquareResults, ...opentripmapResults];
+      // Combine results from all sources
+      const combinedResults = [
+        ...(foursquareResults.status === 'fulfilled' ? foursquareResults.value : []),
+        ...(opentripmapResults.status === 'fulfilled' ? opentripmapResults.value : []),
+        ...(overpassResults.status === 'fulfilled' ? overpassResults.value : [])
+      ];
+      
       return this.deduplicateRestaurants(combinedResults);
       
     } catch (error) {
       console.error('Error fetching restaurants:', error);
+      return [];
+    }
+  },
+
+  // Get restaurants from Overpass API
+  async getOverpassRestaurants(latitude, longitude, radius = 0.08) {
+    try {
+      // Validate coordinates
+      if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+        console.log('Invalid coordinates for Overpass restaurants');
+        return [];
+      }
+
+      const latMin = (latitude - radius).toFixed(6);
+      const latMax = (latitude + radius).toFixed(6);
+      const lngMin = (longitude - radius).toFixed(6);
+      const lngMax = (longitude + radius).toFixed(6);
+      
+      const query = `[out:json][timeout:25];(
+        node["amenity"="restaurant"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="cafe"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="fast_food"](${latMin},${lngMin},${latMax},${lngMax});
+      );out body 30;`;
+      
+      console.log('Fetching restaurants from Overpass...');
+      const response = await fetch(
+        `${API_CONFIG.OVERPASS_API.baseUrl}?data=${encodeURIComponent(query)}`
+      );
+      
+      if (!response.ok) {
+        console.log(`Overpass restaurants API error: ${response.status}`);
+        return [];
+      }
+      
+      const data = await response.json();
+      console.log('Restaurants found from Overpass:', data.elements?.length || 0);
+      
+      return data.elements?.map(restaurant => {
+        const name = restaurant.tags?.name;
+        if (!name) return null;
+        return {
+          name: name,
+          categories: [restaurant.tags?.cuisine || restaurant.tags?.amenity || 'Restaurant'].filter(Boolean),
+          coordinates: {
+            latitude: restaurant.lat,
+            longitude: restaurant.lon
+          },
+          address: restaurant.tags?.['addr:street'] || '',
+          distance: this.calculateDistance(latitude, longitude, restaurant.lat, restaurant.lon),
+          source: 'Overpass'
+        };
+      }).filter(r => r !== null) || [];
+    } catch (error) {
+      console.error('Error fetching Overpass restaurants:', error);
       return [];
     }
   },
@@ -534,35 +622,48 @@ export const LocationService = {
   },
 
   // Get holy places using Overpass API
-  async getHolyPlaces(latitude, longitude, radius = 0.01) {
+  async getHolyPlaces(latitude, longitude, radius = 0.08) {
     try {
-      const latMin = latitude - radius;
-      const latMax = latitude + radius;
-      const lngMin = longitude - radius;
-      const lngMax = longitude + radius;
+      // Validate coordinates
+      if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+        console.log('Invalid coordinates for holy places');
+        return [];
+      }
+
+      const latMin = (latitude - radius).toFixed(6);
+      const latMax = (latitude + radius).toFixed(6);
+      const lngMin = (longitude - radius).toFixed(6);
+      const lngMax = (longitude + radius).toFixed(6);
       
-      const query = `[out:json];node["amenity"="place_of_worship"](${latMin},${lngMin},${latMax},${lngMax});out;`;
+      const query = `[out:json][timeout:25];node["amenity"="place_of_worship"](${latMin},${lngMin},${latMax},${lngMax});out body 25;`;
       
+      console.log('Fetching holy places from Overpass...');
       const response = await fetch(
         `${API_CONFIG.OVERPASS_API.baseUrl}?data=${encodeURIComponent(query)}`
       );
       
       if (!response.ok) {
-        throw new Error(`Overpass API error: ${response.status}`);
+        console.log(`Overpass holy places API error: ${response.status}`);
+        return [];
       }
       
       const data = await response.json();
+      console.log('Holy places found:', data.elements?.length || 0);
       
-      return data.elements?.map(place => ({
-        name: place.tags?.name || 'Unnamed Place of Worship',
-        religion: place.tags?.religion || 'Unknown',
-        type: place.tags?.place_of_worship || place.tags?.amenity,
-        coordinates: {
-          latitude: place.lat,
-          longitude: place.lon
-        },
-        address: place.tags?.['addr:full'] || place.tags?.['addr:street']
-      })) || [];
+      return data.elements?.map(place => {
+        const name = place.tags?.name;
+        if (!name) return null;
+        return {
+          name: name,
+          religion: place.tags?.religion || 'Unknown',
+          type: place.tags?.building || place.tags?.denomination || 'place_of_worship',
+          coordinates: {
+            latitude: place.lat,
+            longitude: place.lon
+          },
+          address: place.tags?.['addr:full'] || place.tags?.['addr:street']
+        };
+      }).filter(p => p !== null) || [];
     } catch (error) {
       console.error('Error fetching holy places:', error);
       return [];
@@ -570,16 +671,24 @@ export const LocationService = {
   },  // Get services and amenities from multiple sources and combine results (excluding accommodation)
   async getLocalServices(latitude, longitude, radius = 10000) {
     try {
-      // Get services from OpenTripMap (excluding accommodation)
-      const servicesPromise = this.getOpenTripMapServices(latitude, longitude, radius);
+      // Get services from OpenTripMap
+      const opentripmapPromise = this.getOpenTripMapServices(latitude, longitude, radius);
+      
+      // Get services from Overpass API (more reliable for services)
+      const overpassPromise = this.getOverpassServices(latitude, longitude);
       
       // Wait for API calls to complete
-      const [servicesResults] = await Promise.all([
-        servicesPromise
+      const [opentripmapResults, overpassResults] = await Promise.allSettled([
+        opentripmapPromise,
+        overpassPromise
       ]);
       
-      // Combine and deduplicate results
-      const combinedResults = [...servicesResults];
+      // Combine results from both sources
+      const combinedResults = [
+        ...(opentripmapResults.status === 'fulfilled' ? opentripmapResults.value : []),
+        ...(overpassResults.status === 'fulfilled' ? overpassResults.value : [])
+      ];
+      
       const deduplicatedResults = this.deduplicateServices(combinedResults);
       
       return deduplicatedResults;
@@ -588,6 +697,100 @@ export const LocationService = {
       console.error('Error fetching local services:', error);
       return [];
     }
+  },
+
+  // Get services using Overpass API
+  async getOverpassServices(latitude, longitude, radius = 0.08) {
+    try {
+      // Validate coordinates
+      if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+        console.log('Invalid coordinates for Overpass services');
+        return [];
+      }
+
+      const latMin = (latitude - radius).toFixed(6);
+      const latMax = (latitude + radius).toFixed(6);
+      const lngMin = (longitude - radius).toFixed(6);
+      const lngMax = (longitude + radius).toFixed(6);
+      
+      // Query for common amenities
+      const query = `[out:json][timeout:25];(
+        node["amenity"="bank"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="pharmacy"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="hospital"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="clinic"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="post_office"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="police"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="library"](${latMin},${lngMin},${latMax},${lngMax});
+        node["amenity"="fuel"](${latMin},${lngMin},${latMax},${lngMax});
+        node["shop"="supermarket"](${latMin},${lngMin},${latMax},${lngMax});
+        node["shop"="convenience"](${latMin},${lngMin},${latMax},${lngMax});
+        node["leisure"="fitness_centre"](${latMin},${lngMin},${latMax},${lngMax});
+      );out body 50;`;
+      
+      console.log('Fetching services from Overpass...');
+      const response = await fetch(
+        `${API_CONFIG.OVERPASS_API.baseUrl}?data=${encodeURIComponent(query)}`
+      );
+      
+      if (!response.ok) {
+        console.log(`Overpass services API error: ${response.status}`);
+        return [];
+      }
+      
+      const data = await response.json();
+      console.log('Services found from Overpass:', data.elements?.length || 0);
+      
+      return data.elements?.map(service => {
+        const type = service.tags?.amenity || service.tags?.shop || service.tags?.leisure || 'service';
+        const name = service.tags?.name;
+        // Only include services with actual names
+        if (!name) return null;
+        return {
+          name: name,
+          type: type,
+          coordinates: {
+            latitude: service.lat,
+            longitude: service.lon
+          },
+          distance: this.calculateDistance(latitude, longitude, service.lat, service.lon),
+          source: 'Overpass'
+        };
+      }).filter(s => s !== null) || [];
+    } catch (error) {
+      console.error('Error fetching Overpass services:', error);
+      return [];
+    }
+  },
+
+  // Get a readable name from service type
+  getServiceNameFromType(type) {
+    const typeMap = {
+      'bank': 'Bank',
+      'pharmacy': 'Pharmacy',
+      'hospital': 'Hospital',
+      'clinic': 'Medical Clinic',
+      'post_office': 'Post Office',
+      'police': 'Police Station',
+      'library': 'Library',
+      'fuel': 'Gas Station',
+      'supermarket': 'Supermarket',
+      'convenience': 'Convenience Store',
+      'fitness_centre': 'Fitness Center'
+    };
+    return typeMap[type] || type;
+  },
+
+  // Calculate distance between two coordinates (in meters)
+  calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // Earth's radius in meters
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return Math.round(R * c);
   },
   // Deduplicate services based on name and proximity
   deduplicateServices(services) {
@@ -824,15 +1027,17 @@ export const LocationService = {
         holyPlaces,
         accommodation,
         services,
-        wikipediaContent
+        wikipediaContent,
+        airQuality
       ] = await Promise.allSettled([
         this.getLocalNews(locationName),
         this.getPlacesToVisit(latitude, longitude),
         this.getLocalRestaurants(locationName, latitude, longitude),
         this.getHolyPlaces(latitude, longitude),
-        this.getAccommodation(latitude, longitude),
+        this.getAccommodationFromGeoapify(latitude, longitude),
         this.getLocalServices(latitude, longitude),
-        this.getWikipediaContent(locationName)
+        this.getWikipediaContent(locationName),
+        this.getAirQuality(latitude, longitude)
       ]);
 
       // Generate historical content using Gemini AI
@@ -847,10 +1052,12 @@ export const LocationService = {
         accommodation: accommodation.status === 'fulfilled' ? accommodation.value : [],
         services: services.status === 'fulfilled' ? services.value : [],
         wikipedia: wikipediaContent.status === 'fulfilled' ? wikipediaContent.value : null,
+        airQuality: airQuality.status === 'fulfilled' ? airQuality.value : null,
         generatedHistory: generatedHistory || `${locationName} has a rich history and cultural heritage that spans many centuries.`
       };
     } catch (error) {
-      console.error('Error getting comprehensive location data:', error);      return {
+      console.error('Error getting comprehensive location data:', error);
+      return {
         news: [],
         placesToVisit: [],
         restaurants: [],
@@ -858,7 +1065,260 @@ export const LocationService = {
         accommodation: [],
         services: [],
         wikipedia: null,
-        generatedHistory: ''      };
+        airQuality: null,
+        generatedHistory: ''
+      };
+    }
+  },
+
+  // Get accommodation from Geoapify API (better results than OpenTripMap)
+  async getAccommodationFromGeoapify(latitude, longitude, radius = 5000) {
+    try {
+      // Try Geoapify first
+      let results = [];
+      
+      if (API_CONFIG.GEOAPIFY_API.apiKey) {
+        const response = await fetch(
+          `${API_CONFIG.GEOAPIFY_API.baseUrl}?categories=accommodation&filter=circle:${longitude},${latitude},${radius}&limit=20&apiKey=${API_CONFIG.GEOAPIFY_API.apiKey}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          results = (data.features || [])?.map(feature => ({
+            name: feature.properties.name || 'Accommodation',
+            type: this.categorizeGeoapifyAccommodation(feature.properties.categories),
+            address: feature.properties.formatted || feature.properties.street,
+            coordinates: {
+              latitude: feature.geometry.coordinates[1],
+              longitude: feature.geometry.coordinates[0]
+            },
+            distance: feature.properties.distance || null,
+            rating: feature.properties.rating || null,
+            amenities: this.extractGeoapifyAmenities(feature.properties),
+            priceRange: this.estimatePriceRange(feature.properties.categories?.join(','), feature.properties.rating),
+            website: feature.properties.website || null,
+            phone: feature.properties.phone || null,
+            source: 'Geoapify'
+          })).filter(item => item.name && item.name !== 'Accommodation') || [];
+        }
+      }
+      
+      // If no results from Geoapify, try Overpass
+      if (results.length === 0) {
+        results = await this.getOverpassAccommodation(latitude, longitude);
+      }
+      
+      // If still no results, try OpenTripMap
+      if (results.length === 0) {
+        results = await this.getAccommodation(latitude, longitude);
+      }
+      return results;
+    } catch (error) {
+      console.error('Error fetching Geoapify accommodation:', error);
+      return this.getAccommodation(latitude, longitude);
+    }
+  },
+
+  // Get accommodation from Overpass API
+  async getOverpassAccommodation(latitude, longitude, radius = 0.08) {
+    try {
+      // Validate coordinates
+      if (!latitude || !longitude || isNaN(latitude) || isNaN(longitude)) {
+        console.log('Invalid coordinates for Overpass accommodation');
+        return [];
+      }
+
+      const latMin = (latitude - radius).toFixed(6);
+      const latMax = (latitude + radius).toFixed(6);
+      const lngMin = (longitude - radius).toFixed(6);
+      const lngMax = (longitude + radius).toFixed(6);
+      
+      const query = `[out:json][timeout:25];(
+        node["tourism"="hotel"](${latMin},${lngMin},${latMax},${lngMax});
+        node["tourism"="guest_house"](${latMin},${lngMin},${latMax},${lngMax});
+        node["tourism"="hostel"](${latMin},${lngMin},${latMax},${lngMax});
+        node["tourism"="motel"](${latMin},${lngMin},${latMax},${lngMax});
+        way["tourism"="hotel"](${latMin},${lngMin},${latMax},${lngMax});
+      );out body center 25;`;
+      
+      console.log('Fetching accommodation from Overpass...');
+      const response = await fetch(
+        `${API_CONFIG.OVERPASS_API.baseUrl}?data=${encodeURIComponent(query)}`
+      );
+      
+      if (!response.ok) {
+        console.log(`Overpass accommodation API error: ${response.status}`);
+        return [];
+      }
+      
+      const data = await response.json();
+      console.log('Accommodation found from Overpass:', data.elements?.length || 0);
+      
+      return data.elements?.map(hotel => {
+        const name = hotel.tags?.name;
+        if (!name) return null;
+        const lat = hotel.lat || hotel.center?.lat;
+        const lon = hotel.lon || hotel.center?.lon;
+        if (!lat || !lon) return null;
+        
+        return {
+          name: name,
+          type: this.categorizeAccommodationType(hotel.tags?.tourism),
+          coordinates: {
+            latitude: lat,
+            longitude: lon
+          },
+          distance: this.calculateDistance(latitude, longitude, lat, lon),
+          rating: hotel.tags?.stars ? parseFloat(hotel.tags.stars) : null,
+          amenities: this.extractOverpassAmenities(hotel.tags),
+          priceRange: this.estimatePriceRange(hotel.tags?.tourism, hotel.tags?.stars),
+          source: 'Overpass'
+        };
+      }).filter(h => h !== null) || [];
+    } catch (error) {
+      console.error('Error fetching Overpass accommodation:', error);
+      return [];
+    }
+  },
+
+  // Extract amenities from Overpass tags
+  extractOverpassAmenities(tags) {
+    if (!tags) return ['Standard Rooms'];
+    
+    const amenities = [];
+    if (tags.internet_access === 'yes' || tags.wifi === 'yes') amenities.push('WiFi');
+    if (tags.parking === 'yes') amenities.push('Parking');
+    if (tags.swimming_pool === 'yes') amenities.push('Pool');
+    if (tags.restaurant === 'yes') amenities.push('Restaurant');
+    if (tags.breakfast === 'yes') amenities.push('Breakfast');
+    
+    return amenities.length > 0 ? amenities : ['Standard Rooms'];
+  },
+
+  // Categorize Geoapify accommodation type
+  categorizeGeoapifyAccommodation(categories) {
+    if (!categories || !Array.isArray(categories)) return 'Hotel';
+    
+    const categoriesStr = categories.join(' ').toLowerCase();
+    
+    if (categoriesStr.includes('resort')) return 'Resort';
+    if (categoriesStr.includes('hostel')) return 'Hostel';
+    if (categoriesStr.includes('guest_house') || categoriesStr.includes('guesthouse')) return 'Guest House';
+    if (categoriesStr.includes('apartment') || categoriesStr.includes('aparthotel')) return 'Apartment';
+    if (categoriesStr.includes('villa')) return 'Villa';
+    if (categoriesStr.includes('motel')) return 'Motel';
+    if (categoriesStr.includes('bed_and_breakfast')) return 'B&B';
+    if (categoriesStr.includes('camping')) return 'Camping';
+    
+    return 'Hotel';
+  },
+
+  // Extract amenities from Geoapify properties
+  extractGeoapifyAmenities(properties) {
+    const amenities = [];
+    
+    if (properties.wifi) amenities.push('WiFi');
+    if (properties.internet_access) amenities.push('Internet');
+    if (properties.parking) amenities.push('Parking');
+    if (properties.wheelchair) amenities.push('Wheelchair Accessible');
+    if (properties.air_conditioning) amenities.push('Air Conditioning');
+    
+    // Default amenities
+    if (amenities.length === 0) {
+      amenities.push('Standard Rooms', 'Reception');
+    }
+    
+    return amenities;
+  },
+
+  // Get air quality from WAQI API
+  async getAirQuality(latitude, longitude) {
+    try {
+      if (!API_CONFIG.WAQI_API.apiKey) {
+        console.log('WAQI API key not configured');
+        return null;
+      }
+
+      const response = await fetch(
+        `${API_CONFIG.WAQI_API.baseUrl}/geo:${latitude};${longitude}/?token=${API_CONFIG.WAQI_API.apiKey}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`WAQI API error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      if (data.status !== 'ok') {
+        console.log('WAQI API returned non-ok status:', data.status);
+        return null;
+      }
+      
+      const aqi = data.data.aqi;
+      const aqiLevel = this.getAQILevel(aqi);
+      
+      return {
+        aqi: aqi,
+        level: aqiLevel.level,
+        color: aqiLevel.color,
+        description: aqiLevel.description,
+        station: data.data.city?.name || 'Nearby Station',
+        dominantPollutant: data.data.dominentpol || 'pm25',
+        lastUpdated: data.data.time?.s || new Date().toISOString(),
+        forecast: data.data.forecast?.daily || null
+      };
+    } catch (error) {
+      console.error('Error fetching air quality:', error);
+      return null;
+    }
+  },
+
+  // Get AQI level description
+  getAQILevel(aqi) {
+    if (aqi <= 50) return { level: 'Good', color: '#00E400', description: 'Air quality is satisfactory' };
+    if (aqi <= 100) return { level: 'Moderate', color: '#FFFF00', description: 'Acceptable air quality' };
+    if (aqi <= 150) return { level: 'Unhealthy for Sensitive', color: '#FF7E00', description: 'Sensitive groups may experience effects' };
+    if (aqi <= 200) return { level: 'Unhealthy', color: '#FF0000', description: 'Everyone may experience health effects' };
+    if (aqi <= 300) return { level: 'Very Unhealthy', color: '#8F3F97', description: 'Health alert for everyone' };
+    return { level: 'Hazardous', color: '#7E0023', description: 'Emergency conditions' };
+  },
+
+  // Cache helper functions
+  async getCachedData(key) {
+    try {
+      const cached = await AsyncStorage.getItem(`cache_${key}`);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < CACHE_DURATION) {
+          return data;
+        }
+      }
+      return null;
+    } catch (error) {
+      console.error('Cache read error:', error);
+      return null;
+    }
+  },
+
+  async setCachedData(key, data) {
+    try {
+      await AsyncStorage.setItem(`cache_${key}`, JSON.stringify({
+        data,
+        timestamp: Date.now()
+      }));
+    } catch (error) {
+      console.error('Cache write error:', error);
+    }
+  },
+
+  async clearCache() {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const cacheKeys = keys.filter(key => key.startsWith('cache_'));
+      await AsyncStorage.multiRemove(cacheKeys);
+    } catch (error) {
+      console.error('Cache clear error:', error);
     }
   },
 };

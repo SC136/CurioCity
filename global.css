@@ -1,3 +1,52 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Base styling for web */
+html {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  height: 100%;
+  overflow: hidden;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Fix React Native Web specific scroll issues */
+[data-rnw-root] {
+  height: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+/* ScrollView handling on web */
+.rn-ScrollView__scrollView {
+  overflow-y: scroll !important;
+  overflow-x: hidden !important;
+}
+
+/* Ensure flex containers scroll properly */
+[style*="flex-direction"],
+[style*="flex: 1"] {
+  min-height: 0;
+}
+
+/* SafeAreaView styling */
+[style*="paddingTop"],
+[style*="paddingBottom"] {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}

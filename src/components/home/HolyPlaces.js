@@ -1,13 +1,14 @@
 import React, { memo, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, Dimensions } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAppTheme } from '../../hooks/useAppTheme';
+import { HolyPlaceSkeleton } from '../common/LoadingSkeleton';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH * 0.7;
 
-const HolyPlaces = memo(({ data, onItemPress }) => {
+const HolyPlaces = memo(({ data, onItemPress, loading = false }) => {
   const { colors } = useAppTheme();
 
   const renderItem = useCallback(({ item }) => (
@@ -58,8 +59,6 @@ const HolyPlaces = memo(({ data, onItemPress }) => {
     </TouchableOpacity>
   ), [colors, onItemPress]);
 
-  const keyExtractor = useCallback((item, index) => `holy-${index}`, []);
-
   return (
     <View className="mb-2" style={{ overflow: 'visible' }}>
       <View className="flex-row items-center justify-center px-6 mb-5">
@@ -70,17 +69,35 @@ const HolyPlaces = memo(({ data, onItemPress }) => {
         <View className="h-[1px] flex-1" style={{ backgroundColor: colors.border }} />
       </View>
       
-      <FlatList
-        data={data}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, paddingBottom: 20 }}
-        removeClippedSubviews={true}
-        maxToRenderPerBatch={3}
-        windowSize={5}
-      />
+      {loading ? (
+        <View className="flex-row px-5 pb-5">
+          <HolyPlaceSkeleton />
+          <HolyPlaceSkeleton />
+          <HolyPlaceSkeleton />
+        </View>
+      ) : data.length === 0 ? (
+        <View className="items-center justify-center py-8 px-6">
+          <Ionicons name="business-outline" size={48} color={colors.textSecondary} style={{ opacity: 0.5 }} />
+          <Text className="text-base font-semibold mt-4" style={{ color: colors.textPrimary }}>
+            No holy places found nearby
+          </Text>
+          <Text className="text-sm text-center mt-2" style={{ color: colors.textSecondary }}>
+            Try searching in a different area
+          </Text>
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingVertical: 10, paddingBottom: 20 }}
+        >
+          {data.map((item, index) => (
+            <View key={`holy-${index}`}>
+              {renderItem({ item })}
+            </View>
+          ))}
+        </ScrollView>
+      )}
     </View>
   );
 });
